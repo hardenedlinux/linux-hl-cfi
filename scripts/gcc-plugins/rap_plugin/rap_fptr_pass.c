@@ -12,7 +12,10 @@ bool report_fptr_hash;
 
 static bool rap_fptr_gate(void)
 {
-	return rap_cmodel_check();
+  if (require_call_hl_cfi)
+    return false;
+  else
+    return rap_cmodel_check();
 }
 
 static tree build_rap_hash(gimple call_stmt, tree fntype)
@@ -112,6 +115,9 @@ static void rap_instrument_fptr(gimple_stmt_iterator *gsi)
 		debug_tree(fntype);
 		gcc_unreachable();
 	}
+
+	/* Try rap optimization */
+	
 
 	if (UNITS_PER_WORD == 8)
 		rap_hash_offset = 2 * sizeof(rap_hash_t);

@@ -2,6 +2,7 @@
 #define RAP_H_INCLUDED
 
 #include "gcc-common.h"
+#include "hl-cfi.h"
 
 typedef struct {
 	int hash; // will be sign extended to long in reality
@@ -34,10 +35,14 @@ gimple barrier(tree var, bool full);
 bool rap_cmodel_check(void);
 
 #if BUILDING_GCC_VERSION >= 4009
+opt_pass *make_hl_gather_pass(void);
+opt_pass *make_hl_cfi_pass(void);
 opt_pass *make_rap_ret_pass(void);
 opt_pass *make_rap_fptr_pass(void);
 opt_pass *make_rap_mark_retloc_pass(void);
 #else
+struct opt_pass *make_hl_gather_pass(void);
+struct opt_pass *make_hl_cfi_pass(void);
 struct opt_pass *make_rap_ret_pass(void);
 struct opt_pass *make_rap_fptr_pass(void);
 struct opt_pass *make_rap_mark_retloc_pass(void);

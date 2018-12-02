@@ -18,7 +18,10 @@ __visible int plugin_is_GPL_compatible;
 
 static struct plugin_info rap_plugin_info = {
 	.version	= "201612091515",
-	.help		= "typecheck=ret,call\tenable the corresponding type hash checking based features\n"
+	.help		= "opt\tenable rap optimizations of HardenedLinux\n"
+		          "hl_cfi\tenable the cfi implementation of HardenedLinux"
+			  "and replace the original forwaed cfi of rap\n"
+		          "typecheck=ret,call\tenable the corresponding type hash checking based features\n"
 			  "retabort=ud2\t\t\toverride __builtin_trap with specified asm for both kinds of return address checking\n"
 			  "callabort=ud2\t\t\toverride __builtin_trap with specified asm for indirect call checking\n"
 			  "hash=abs,abs-finish,abs-ops,abs-attr,const,volatile\n"
@@ -196,6 +199,13 @@ static void rap_begin_function(tree decl)
 
 	if (report_func_hash)
 		inform(DECL_SOURCE_LOCATION(decl), "func rap_hash: %x %s", imprecise_rap_hash.hash, IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(decl)));
+
+	/* We do not have any risk, we do not need the hash key before the function. */
+	if (0 == imprecise_rap_hash.hash 
+	     || 
+	     ! is_rap_function_maybe_roped (decl)) {
+		return;
+	}
 
 	if (UNITS_PER_WORD == 8)
 		fprintf(asm_out_file, "\t.quad %#llx\t%s __rap_hash_call_%s\n", (long long)imprecise_rap_hash.hash, ASM_COMMENT_START, IDENTIFIER_POINTER(DECL_ASSEMBLER_NAME(decl)));
@@ -536,7 +546,7 @@ static bool rap_version_check(struct plugin_gcc_version *gcc_version, struct plu
 {
 	if (!gcc_version || !plugin_version)
 		return false;
-
+#if 0
 #if BUILDING_GCC_VERSION >= 5000
 	if (strncmp(gcc_version->basever, plugin_version->basever, 4))
 #else
@@ -551,7 +561,8 @@ static bool rap_version_check(struct plugin_gcc_version *gcc_version, struct plu
 		return false;
 //	if (strcmp(gcc_version->configuration_arguments, plugin_version->configuration_arguments))
 //		return false;
-	return true;
+#endif
+        return true;
 }
 
 static tree handle_rap_hash_attribute(tree *node, tree name, tree args __unused, int flags, bool *no_add_attrs)
@@ -614,6 +625,9 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 	bool enable_abs_ops = false;
 	bool enable_abs_attr = false;
 
+	// hl-cfi & pointer set build pass insert.
+	PASS_INFO(hl_gather,		"pta",	        1, PASS_POS_INSERT_AFTER);
+	PASS_INFO(hl_cfi,		"hl_gather",	1, PASS_POS_INSERT_AFTER);
 	PASS_INFO(rap_ret,		"optimized",	1, PASS_POS_INSERT_AFTER);
 	PASS_INFO(rap_fptr,		"rap_ret",	1, PASS_POS_INSERT_AFTER);
 	PASS_INFO(rap_mark_retloc,	"mach",		1, PASS_POS_INSERT_AFTER);
@@ -635,7 +649,24 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 	for (i = 0; i < argc; ++i) {
 		if (!strcmp(argv[i].key, "disable"))
 			continue;
-
+		/* Request rap optimizations.  */
+		if (! strcmp(argv[i].key, "opt"))
+		  {
+		    require_call_hl_gather = true;
+		    continue;
+		  }
+		/* Request cfi replace.  */
+		if (! strcmp(argv[i].key, "hl_cfi"))
+		  {
+		    require_call_hl_cfi = true;
+		    continue;
+		  }
+		/* dumps.  */
+		if (! strcmp(argv[i].key, "hl_cfi_dump"))
+		  {
+		    require_hl_cfi_dump = true;
+		    continue;    
+		  }
 		if (!strcmp(argv[i].key, "typecheck")) {
 			char *values, *value, *saveptr;
 
@@ -741,6 +772,9 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 	}
 
 	register_callback(plugin_name, PLUGIN_INFO, NULL, &rap_plugin_info);
+	/* register the rap optimization*/
+        register_callback(plugin_name, PLUGIN_OVERRIDE_GATE, rap_try_call_ipa_pta, 
+			  (void *)&cfi_gcc_optimize_level);
 
 	if (enable_type_ret) {
 		flag_crossjumping = 0;
@@ -774,6 +808,8 @@ __visible int plugin_init(struct plugin_name_args *plugin_info, struct plugin_gc
 
 		if (!enable_type_ret)
 			rap_fptr_pass_info.reference_pass_name = "optimized";
+		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &hl_gather_pass_info);
+		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &hl_cfi_pass_info);
 		register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &rap_fptr_pass_info);
 	}
 
