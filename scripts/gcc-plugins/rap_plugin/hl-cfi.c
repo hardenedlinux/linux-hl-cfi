@@ -18,6 +18,12 @@
 #include "bitmap.h"
 #include "gimple-pretty-print.h"
 
+#if BUILDING_GCC_VERSION < 7000
+#include "pointer-set.h"
+#else
+#include "hash-set.h"
+#include "hash-map.h"
+#endif
 
 /* There are many optimization methrod can do for RAP.
    From simple to complex and aside with the gcc internal work stage.
@@ -47,8 +53,18 @@ int rap_opt_statistics_data;
 /* Contain all the sensitive functions which maybe the targets of ROP.
    so all of these functons should compute and output the function hash. */
 static bitmap sensi_funcs;
+
+#if BUILDING_GCC_VERSION < 7000
+
 /* Contains the type database which are pointer analysis can not sloved */
 static struct pointer_set_t *sensi_func_types;
+#else
+
+/* gcc has change the struct gimple base type.!!!  */
+#define gimple gimple*
+static hash_set<tree> *sensi_func_types;
+#endif
+
 /* Every fucntion has only one catch basic block.  */
 //static basic_block the_cfi_catch_bb_for_cfun;
 //
@@ -319,7 +335,7 @@ rap_gather_function_targets ()
 static unsigned int
 hl_gather_execute ()
 {
-  rap_gather_function_targets ();
+  //rap_gather_function_targets ();
   
   return 0;
 }
@@ -342,8 +358,7 @@ hl_gather_gate ()
 //#define PROPERTIES_REQUIRED PROP_gimple_any
 //#define PROPERTIES_PROVIDED PROP_gimple_lcf
 #define TODO_FLAGS_FINISH \
-	  TODO_verify_ssa | TODO_verify_stmts | TODO_dump_func | \
-	  TODO_remove_unused_locals | TODO_verify_flow
+	  TODO_verify_ssa | TODO_verify_stmts | TODO_verify_flow
 #include "gcc-generate-simple_ipa-pass.h"
 #undef PASS_NAME
 
@@ -356,6 +371,7 @@ is_rap_function_maybe_roped (tree f)
 {
   if (! is_rap_function_may_be_aliased (f))
     return 0;
+  //  for test.
   return 1;
   /* Ask the oracle for help */
   if (0 == cfi_gcc_optimize_level)
@@ -799,7 +815,10 @@ build_cfi (gimple_stmt_iterator *labile_gsi_addr, basic_block* labile_bb_addr)
   decl = gimple_call_fn (cs);
   /* We must be indirect call */
   gcc_assert (TREE_CODE (decl) == SSA_NAME);
-  gcc_assert (TREE_TYPE (TREE_TYPE (decl)) == cs->gimple_call.u.fntype);
+  if (TREE_TYPE (TREE_TYPE (decl)) != cs->gimple_call.u.fntype)
+    return;
+    //gcc_assert (0);
+  //gcc_assert (TREE_TYPE (TREE_TYPE (decl)) == cs->gimple_call.u.fntype);
   
   /* build source hash tree */
   sh = build_cfi_hash_tree (cs, BUILD_SOURCE_HASH_TREE, NULL);
@@ -932,8 +951,11 @@ hl_cfi_execute ()
       /* As we introduced new control-flow we need to insert phi nodes
          for the new blocks.  */
       if (is_status_changed)
-        mark_virtual_operands_for_renaming (cfun);
-
+        {
+	  // reboot status flag.
+	  is_status_changed = false;
+          mark_virtual_operands_for_renaming (cfun);
+        }
       /* Clean every function data.  */
       //the_cfi_catch_bb_for_cfun = NULL;
       pop_cfun ();
@@ -963,7 +985,6 @@ hl_cfi_gate ()
 //#define PROPERTIES_PROVIDED PROP_gimple_lcf
 #define TODO_FLAGS_FINISH \
 	  TODO_verify_ssa | TODO_verify_stmts | TODO_verify_flow | \
-	  TODO_dump_func | TODO_remove_unused_locals | TODO_cleanup_cfg | \
-	  TODO_rebuild_cgraph_edges
+	  TODO_cleanup_cfg | TODO_rebuild_cgraph_edges
 #include "gcc-generate-simple_ipa-pass.h"
 #undef PASS_NAME
