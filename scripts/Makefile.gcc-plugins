@@ -82,10 +82,10 @@ ifdef CONFIG_GCC_PLUGINS
   gcc-plugin-subdir-$(CONFIG_PAX_RAP)			+= rap_plugin
   gcc-plugin-$(CONFIG_PAX_RAP)				+= rap_plugin/rap_plugin.so
 #  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -DRAP_PLUGIN -fplugin-arg-rap_plugin-typecheck=call
-#  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -DRAP_PLUGIN -fplugin-arg-rap_plugin-typecheck=call,ret
-#  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-finish
-#  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-ops
-#  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-attr
+  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -DRAP_PLUGIN -fplugin-arg-rap_plugin-typecheck=call,ret
+  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-finish
+  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-ops
+  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hash=abs-attr
   gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-opt
   gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-hl_cfi
 #  gcc-plugin-cflags-$(CONFIG_PAX_RAP)			+= -fplugin-arg-rap_plugin-report=func,fptr,abs

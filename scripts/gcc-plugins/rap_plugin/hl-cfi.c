@@ -814,11 +814,13 @@ build_cfi (gimple_stmt_iterator *labile_gsi_addr, basic_block* labile_bb_addr)
   gcc_assert (is_gimple_call (cs));
   decl = gimple_call_fn (cs);
   /* We must be indirect call */
-  gcc_assert (TREE_CODE (decl) == SSA_NAME);
-  if (TREE_TYPE (TREE_TYPE (decl)) != cs->gimple_call.u.fntype)
+  if (TREE_CODE (decl) != SSA_NAME)
+    //gcc_assert (TREE_CODE (decl) == SSA_NAME);
+    /* When we compile linux kernel the previous assert will be catched, 
+       the IR is gimple_call a NULL function, looks like a gcc bug.  */
     return;
-    //gcc_assert (0);
-  //gcc_assert (TREE_TYPE (TREE_TYPE (decl)) == cs->gimple_call.u.fntype);
+  gcc_assert (types_compatible_p(TREE_TYPE (TREE_TYPE (decl)), 
+			         cs->gimple_call.u.fntype));
   
   /* build source hash tree */
   sh = build_cfi_hash_tree (cs, BUILD_SOURCE_HASH_TREE, NULL);
